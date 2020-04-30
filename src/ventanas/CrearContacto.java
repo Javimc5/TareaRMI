@@ -15,6 +15,7 @@ import java.awt.Font;
 import javax.swing.JTextField;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
+import java.rmi.RemoteException;
 import java.awt.event.ActionEvent;
 
 public class CrearContacto extends JFrame {
@@ -24,6 +25,7 @@ public class CrearContacto extends JFrame {
 	private JTextField textFieldDireccion;
 	private JTextField textFieldTelefono;
 	private static CrearContacto frame;
+	private Server server;
 	
 	/**
 	 * Launch the application.
@@ -91,15 +93,18 @@ public class CrearContacto extends JFrame {
 				crearUsuario();
 				frame.setVisible(false);
 			}
-
-			
 		});
 		btnCrear.setBounds(119, 272, 128, 54);
 		contentPane.add(btnCrear);
 	}
 	public void crearUsuario() {
 				DatosContacto contacto=new DatosContacto(textFieldNombre.getText(), textFieldDireccion.getText(), textFieldTelefono.getText());
-				Server.añadirDatos(contacto);
+				try {
+					Server.añadirDatos(contacto);
+				} catch (RemoteException e) {
+					// TODO Bloque catch generado automáticamente
+					e.printStackTrace();
+				}
 				
 	}
 }

@@ -12,6 +12,11 @@ public class DatosContacto {
 		this.direccion = direccion;
 		this.telefono = telefono;
 	}
+	public DatosContacto(String nombre, String direccion, String telefono) {
+		this.nombre = nombre;
+		this.direccion = direccion;
+		this.telefono = telefono;
+	}
 	
 	public int getId() {
 		return id;

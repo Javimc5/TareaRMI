@@ -6,6 +6,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import clienteServidor.Server;
+
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import java.awt.Font;
@@ -110,7 +112,7 @@ public class RegistroUsuario extends JFrame {
 
 	public static boolean crearUsuario() throws SQLException {
 		
-		Connection cn = Server.conectar();
+		Connection cn = Server.getConexion();
 		Statement stm = cn.createStatement();
 		ResultSet rs = null;
 

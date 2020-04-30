@@ -25,5 +25,4 @@ public class Cliente {
 			app.main(null);
 		}
 	}
-
 }

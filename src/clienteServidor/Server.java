@@ -17,6 +17,7 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Properties;
 import clienteServidor.DatosContacto;
+import ventanas.InicioUsuario;
 
 
 public class Server implements RMIAgendaInterface {
@@ -34,7 +35,7 @@ public class Server implements RMIAgendaInterface {
 		InputStream entrada = null;
 		// acesso a db
 		try {
-			File miFichero = new File("config.ini");
+			File miFichero = new File("Config/config.ini");
 
 			if (miFichero.exists()) {
 				entrada = new FileInputStream(miFichero);
@@ -48,7 +49,7 @@ public class Server implements RMIAgendaInterface {
 
 				Class.forName(driver);
 				try {
-					conexion = DriverManager.getConnection(url, usr, pwd);
+					setConexion(DriverManager.getConnection(url, usr, pwd));
 					System.out.println("Conexión OK");
 
 				} catch (SQLException e) {
@@ -93,10 +94,10 @@ public class Server implements RMIAgendaInterface {
 	public boolean consultaUsuario(String usuario, String contraseña) throws RemoteException {
 		usuarioS=usuario;
 		boolean usuarioValido=false;
-		String query="Select * From usuarios where nombreUsuario="+usuario;
+		String query="Select * From usuario where nombreUsuario='"+usuario+"'";
 		Statement stmt;
 		try {
-			stmt = conexion.createStatement();
+			stmt = Server.conectar().createStatement();
 			ResultSet rset = stmt.executeQuery(query);
 			if(rset.next()) {			
 				if(contraseña.equals(rset.getString(2))) {
@@ -109,17 +110,15 @@ public class Server implements RMIAgendaInterface {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
 		return usuarioValido;
-
 	}
 
 	@Override
 	public HashMap<Integer, DatosContacto> sacarTabla()  throws RemoteException {
-		String query = "SELECT * FROM contactos where nombreUsuario="+usuarioS;
+		String query = "SELECT * FROM contactos where nombreUsuario='"+usuarioS+"'";
 		HashMap<Integer, DatosContacto> map = new HashMap<Integer, DatosContacto>();
 		try {
-			Statement stmt = conexion.createStatement();
+			Statement stmt = getConexion().createStatement();
 			ResultSet rset = stmt.executeQuery(query);
 			while (rset.next()) {
 				int id = rset.getInt("id");
@@ -138,19 +137,14 @@ public class Server implements RMIAgendaInterface {
 	}
 	
 
-	@Override
-	public void añadirDatos(DatosContacto datos)  throws RemoteException{
-		String sql = "INSERT INTO `contactos` (`id`, `nombre`, `direccion`, `telefono`,'nombreUsuario') VALUES (?,?,?,?,?)";
+	public static void añadirDatos(DatosContacto datos)  throws RemoteException{
+		String sql = "INSERT INTO contactos (nombre, direccion, telefono,nombreUsuario) VALUES (?,?,?,?)";
 		try {
-
-			sentencia = conexion.prepareStatement(sql);
-
-			sentencia.setInt(1, datos.getId());
-			sentencia.setString(2, datos.getNombre());
-			sentencia.setString(3, datos.getDireccion());
-			sentencia.setString(4, datos.getTelefono());
-			sentencia.setString(5, usuarioS);
-
+			sentencia = getConexion().prepareStatement(sql);
+			sentencia.setString(1, datos.getNombre());
+			sentencia.setString(2, datos.getDireccion());
+			sentencia.setString(3, datos.getTelefono());
+			sentencia.setString(4, InicioUsuario.correo);
 			sentencia.executeUpdate();
 
 		} catch (SQLException e) {
@@ -164,7 +158,7 @@ public class Server implements RMIAgendaInterface {
 		String sql = "UPDATE `contactos` SET `nombre` = ?, `direccion` = ?,`telefono` = ? WHERE `contactos`.`id` = ?";
 		try {
 			
-			sentencia = conexion.prepareStatement(sql);
+			sentencia = getConexion().prepareStatement(sql);
 
 		
 			sentencia.setString(1,datos.getNombre());
@@ -182,7 +176,7 @@ public class Server implements RMIAgendaInterface {
 	public void eliminarDatos(int id)  throws RemoteException{
 		String sql = "DELETE FROM `contactos` WHERE `contactos`.`id` = ?";
 		try {
-			sentencia = conexion.prepareStatement(sql);
+			sentencia = getConexion().prepareStatement(sql);
 			sentencia.setInt(1, id);
 			sentencia.executeUpdate();
 
@@ -192,6 +186,58 @@ public class Server implements RMIAgendaInterface {
 			e.printStackTrace();
 		}
 
+	}
+
+	public static Connection getConexion() {
+		return conexion;
+	}
+
+	public static void setConexion(Connection conexion) {
+		Server.conexion = conexion;
+	}
+	
+	public static Connection conectar() {
+		Properties propiedades = new Properties();
+		InputStream entrada = null;
+		// acesso a db
+		try {
+			File miFichero = new File("Config/config.ini");
+
+			if (miFichero.exists()) {
+				entrada = new FileInputStream(miFichero);
+
+				propiedades.load(entrada);
+
+				driver = propiedades.getProperty("driver");
+				usr = propiedades.getProperty("usr");
+				pwd = propiedades.getProperty("pwd");
+				url = propiedades.getProperty("url");
+
+				try {
+					conexion = DriverManager.getConnection(url, usr, pwd);
+					System.out.println("Conexión OK");
+
+				} catch (SQLException e) {
+					System.out.println("Error en la conexión");
+					e.printStackTrace();
+				}
+
+				return conexion;
+
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			if (entrada != null) {
+				try {
+					entrada.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return conexion;
+		
 	}
 
 	
