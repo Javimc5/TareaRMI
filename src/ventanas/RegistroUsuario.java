@@ -5,7 +5,8 @@ import java.awt.EventQueue;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import conexion.Conexion;
+
+import clienteServidor.Server;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import java.awt.Font;
@@ -109,8 +110,8 @@ public class RegistroUsuario extends JFrame {
 	}
 
 	public static boolean crearUsuario() throws SQLException {
-		Conexion conexion = new Conexion();
-		Connection cn = conexion.conectar();
+		
+		Connection cn = Server.conectar();
 		Statement stm = cn.createStatement();
 		ResultSet rs = null;
 

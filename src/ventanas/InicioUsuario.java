@@ -7,7 +7,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import conexion.Conexion;
+
+import clienteServidor.RMIAgendaInterface;
+import clienteServidor.Server;
 import javax.swing.JTextField;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -15,6 +17,7 @@ import java.awt.Font;
 import javax.swing.JPasswordField;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
+import java.rmi.RemoteException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,6 +36,7 @@ public class InicioUsuario extends JFrame {
 	private JButton btnInicio;
 	private static int contInicio = 0;
 	public static String correo = "";
+	public static RMIAgendaInterface server;
 
 	/**
 	 * Launch the application.
@@ -57,6 +61,7 @@ public class InicioUsuario extends JFrame {
 	 * Create the frame for usuario
 	 */
 	public InicioUsuario() {
+		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 450, 300);
 		contentPane = new JPanel();
@@ -106,6 +111,7 @@ public class InicioUsuario extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					if(sesionUsuario()) {
+						
 						MenuBusqueda inicio=new MenuBusqueda();
 						inicio.main(null);
 						frame.setVisible(false);
@@ -126,40 +132,29 @@ public class InicioUsuario extends JFrame {
 	 *         contraseña son incorrectos
 	 * @throws SQLException
 	 */
+	
+	public void setServer(RMIAgendaInterface server) {
+		this.server=server;
+	}
 
 	public static boolean sesionUsuario() throws SQLException {
-		Conexion conexion = new Conexion();
-		Connection cn = conexion.conectar();
-		Statement stm = cn.createStatement();
-		ResultSet rs = null;
-
-		correo = "'" + txtUsuario.getText() + "'";
-		// Select para seleccionar en la tabla users el usuario al que le corresponde el
-		// correo a comprobar para iniciar sesion
-		rs = stm.executeQuery("Select * from usuario where nombreUsuario=" + correo);
-		if (!rs.next()) {
-			JOptionPane.showMessageDialog(null, "Correo Invalido");
-			contInicio++;
-			System.out.println(contInicio);
-			if (contInicio >= 3) {
-				frame.setVisible(false);
-			}
-			return false;
-		} else {
-			String pass = passwordField.getText();
-			String contr = rs.getString(2);
-			if (pass.equals(contr)) {
-				JOptionPane.showMessageDialog(null, "Bienvenido " + rs.getString(1) + "\n\n\n");
-				return true;
-			} else {
-				JOptionPane.showMessageDialog(null, "Contraseña Incorrecta");
-				contInicio++;
-				if (contInicio >= 3) {
-					frame.setVisible(false);
-				}
-			}
-			return false;
+		correo =txtUsuario.getText();
+		String pass = passwordField.getText();
+		 try {
+			 boolean correcto=server.consultaUsuario(correo, pass);
+			 if(correcto=true) {
+				 JOptionPane.showMessageDialog(null, "Bienvenido " + correo + "\n\n\n");
+			 }
+			 else {
+				 JOptionPane.showMessageDialog(null, "Usuario / Contraseña incorrectos");
+			 }
+			return correcto;
+		} catch (RemoteException e) {
+			// TODO Bloque catch generado automáticamente
+			e.printStackTrace();
 		}
-
+		 return false;
 	}
+
+	
 }

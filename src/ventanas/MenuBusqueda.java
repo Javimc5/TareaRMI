@@ -19,7 +19,8 @@ import java.sql.Statement;
 import javax.swing.AbstractListModel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import conexion.Conexion;
+
+import clienteServidor.Server;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
@@ -33,7 +34,7 @@ public class MenuBusqueda extends JFrame {
 	private JTable table;
 	static MenuBusqueda frame;
 	private JButton btnModificarUsuario;
-
+	private Server server;
 	/**
 	 * Launch the application.
 	 */
@@ -60,7 +61,7 @@ public class MenuBusqueda extends JFrame {
 				if(InicioUsuario.correo.equals(""))
 					btnModificarUsuario.setVisible(false);
 				try {
-					modificarTabla("Select * from contactos");
+					modificarTabla("Select * from contactos where nombreUsuario='"+InicioUsuario.correo+"'");
 				} catch (SQLException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -75,7 +76,7 @@ public class MenuBusqueda extends JFrame {
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 		
-		JLabel lblNearEat = new JLabel("Near Eat");
+		JLabel lblNearEat = new JLabel("AGENDA");
 		lblNearEat.setFont(new Font("Comic Sans MS", Font.BOLD, 32));
 		lblNearEat.setBounds(10, 11, 158, 43);
 		contentPane.add(lblNearEat);
@@ -97,7 +98,7 @@ public class MenuBusqueda extends JFrame {
 						modificarTabla("Select * from contactos");
 					else {
 						//Select para recibir los datos de todos los restaurantes que correspondan con la busqueda para rellenar la tabla
-						String query="Select * from contactos where Nombre like '%"+textField.getText()+"%'";
+						String query="Select * from contactos where Nombre like '%"+textField.getText()+"%' and nombreUsuario='"+InicioUsuario.correo+"'";
 						modificarTabla(query);
 					}
 				}catch (SQLException e1) {
@@ -110,7 +111,7 @@ public class MenuBusqueda extends JFrame {
 		
 		JScrollPane scrollPane = new JScrollPane();
 		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		scrollPane.setBounds(10, 99, 816, 332);
+		scrollPane.setBounds(20, 99, 816, 332);
 		contentPane.add(scrollPane);
 		
 		table = new JTable();
@@ -135,11 +136,19 @@ public class MenuBusqueda extends JFrame {
 		});
 		btnCerrarSesion.setBounds(650, 60, 176, 32);
 		contentPane.add(btnCerrarSesion);
+		
+		JButton btnCrearContacto= new JButton("Crear Contacto");
+		btnCrearContacto.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				CrearContacto.main(null);
+			}
+		});
+		btnCrearContacto.setBounds(650, 25, 176, 32);
+		contentPane.add(btnCrearContacto);
 	}
 	
 	public void modificarTabla(String query) throws SQLException {
-		Conexion conexion = new Conexion();
-		Connection cn = conexion.conectar();
+		Connection cn = Server.conectar();
 		Statement stm = cn.createStatement();
 		ResultSet rs = stm.executeQuery(query);
 		

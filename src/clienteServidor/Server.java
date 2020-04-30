@@ -16,7 +16,10 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Properties;
 
+import javax.swing.JOptionPane;
+
 import clienteServidor.DatosContacto;
+import ventanas.InicioUsuario;
 
 public class Server implements RMIAgendaInterface {
 	private static String usr;
@@ -24,15 +27,123 @@ public class Server implements RMIAgendaInterface {
 	private static String url;
 	private static String driver;
 	private static Connection conexion;
-	private PreparedStatement sentencia;
-	private String usuarioS;
+	private static PreparedStatement sentencia;
+	private static String usuarioS;
+
 	public static void main(String[] args) {
 
 		Properties propiedades = new Properties();
 		InputStream entrada = null;
-		//acesso a db
+		// acesso a db
 		try {
-			File miFichero = new File("Config/config.ini");
+			File miFichero = new File("config.ini");
+
+			if (miFichero.exists()) {
+				entrada = new FileInputStream(miFichero);
+
+				propiedades.load(entrada);
+
+				driver = propiedades.getProperty("driver");
+				usr = propiedades.getProperty("usr");
+				pwd = propiedades.getProperty("pwd");
+				url = propiedades.getProperty("url");
+
+				Class.forName(driver);
+				try {
+					conexion = DriverManager.getConnection(url, usr, pwd);
+					System.out.println("Conexión OK");
+
+				} catch (SQLException e) {
+					System.out.println("Error en la conexión");
+					e.printStackTrace();
+				}
+
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			if (entrada != null) {
+				try {
+					entrada.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		// rmi
+		Registry reg = null;
+		try {
+			System.out.println("Crea el registro de objetos, escuchando en el puerto 5555");
+			reg = LocateRegistry.createRegistry(5555);
+		} catch (Exception e) {
+			System.out.println("ERROR: No se ha podido crear el registro");
+			e.printStackTrace();
+		}
+		System.out.println("Creando el objeto servidor");
+		Server serverObject = new Server();
+		try {
+			System.out.println("Inscribiendo el objeto servidor en el registro");
+			System.out.println("Se le da un nombre único: ");
+			reg.rebind("Agenda", (RMIAgendaInterface) UnicastRemoteObject.exportObject(serverObject, 0));
+		} catch (Exception e) {
+			System.out.println("ERROR: No se ha podido inscribir el objeto servidor.");
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public boolean consultaUsuario(String usuario, String contraseña) {
+		Connection cn = conectar();
+		boolean usuarioValido = false;
+		String query = "Select * From usuario where nombreUsuario='" + usuario+"'";
+		if (cn != null) {
+			System.out.println("Conectado");
+			try {
+				Statement stm = cn.createStatement();
+				ResultSet rs = null;
+				usuarioS = usuario;
+				rs = stm.executeQuery(query);
+				if (rs.next()) {
+					if (contraseña.equals(rs.getString(2))) {
+						usuarioValido = true;
+					}
+				}
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return usuarioValido;
+
+	}
+
+
+	public static void añadirDatos(DatosContacto datos) {
+		String sql = "INSERT INTO contactos (nombre, direccion, telefono,nombreUsuario) VALUES (?,?,?,?)";
+		try {
+
+			sentencia = conexion.prepareStatement(sql);
+
+			sentencia.setString(1, datos.getNombre());
+			sentencia.setString(2, datos.getDireccion());
+			sentencia.setString(3, datos.getTelefono());
+			sentencia.setString(4, InicioUsuario.correo);
+
+			sentencia.executeUpdate();
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(null, "Error al crear contacto");
+		}
+	}
+
+
+	public static Connection conectar() {
+		Properties propiedades = new Properties();
+		InputStream entrada = null;
+		// acesso a db
+		try {
+			File miFichero = new File("config.ini");
 
 			if (miFichero.exists()) {
 				entrada = new FileInputStream(miFichero);
@@ -59,133 +170,9 @@ public class Server implements RMIAgendaInterface {
 				}
 			}
 		}
-		//rmi
-		Registry reg = null;
-		try {
-			System.out.println("Crea el registro de objetos, escuchando en el puerto 5555");
-			reg = LocateRegistry.createRegistry(5555);
-		} catch (Exception e) {
-			System.out.println("ERROR: No se ha podido crear el registro");
-			e.printStackTrace();
-		}
-		System.out.println("Creando el objeto servidor");
-		Server serverObject = new Server();
-		try {
-			System.out.println("Inscribiendo el objeto servidor en el registro");
-			System.out.println("Se le da un nombre único: ");
-			reg.rebind("Agenda", (RMIAgendaInterface) UnicastRemoteObject.exportObject(serverObject, 0));
-		} catch (Exception e) {
-			System.out.println("ERROR: No se ha podido inscribir el objeto servidor.");
-			e.printStackTrace();
-		}
-	}
-
-	
-
-
-	@Override
-	public boolean consultaUsuario(String usuario, String contraseña) {
-		usuarioS=usuario;
-		boolean usuarioValido=false;
-		String query="Select * From usuarios where nombreUsuario="+usuario;
-		Statement stmt;
-		try {
-			stmt = conexion.createStatement();
-			ResultSet rset = stmt.executeQuery(query);
-			if(rset.next()) {			
-				if(contraseña.equals(rset.getString(2))) {
-					usuarioValido= true;
-				}
-			}
-			rset.close();
-			stmt.close();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		return usuarioValido;
-
-	}
-
-	@Override
-	public HashMap<Integer, DatosContacto> sacarTabla() {
-		String query = "SELECT * FROM contactos where nombreUsuario="+usuarioS;
-		HashMap<Integer, DatosContacto> map = new HashMap<Integer, DatosContacto>();
-		try {
-			Statement stmt = conexion.createStatement();
-			ResultSet rset = stmt.executeQuery(query);
-			while (rset.next()) {
-				int id = rset.getInt("id");
-				String nombre = rset.getString("nombre");
-				String direccion = rset.getString("direccion");
-				String telefono = rset.getString("telefono");
-				DatosContacto datos = new DatosContacto(id, nombre, direccion, telefono);
-				map.put(id, datos);
-			}
-			rset.close();
-			stmt.close();
-		} catch (SQLException s) {
-			s.printStackTrace();
-		}
-		return map;
+		return conexion;
 	}
 	
 
-	@Override
-	public void añadirDatos(DatosContacto datos) {
-		String sql = "INSERT INTO `contactos` (`id`, `nombre`, `direccion`, `telefono`,'nombreUsuario') VALUES (?,?,?,?,?)";
-		try {
-
-			sentencia = conexion.prepareStatement(sql);
-
-			sentencia.setInt(1, datos.getId());
-			sentencia.setString(2, datos.getNombre());
-			sentencia.setString(3, datos.getDireccion());
-			sentencia.setString(4, datos.getTelefono());
-			sentencia.setString(5, usuarioS);
-
-			sentencia.executeUpdate();
-
-		} catch (SQLException e) {
-		e.printStackTrace();
-		}
-	}
-
-
-	@Override
-	public void modificarTabla(DatosContacto datos) {
-		String sql = "UPDATE `contactos` SET `nombre` = ?, `direccion` = ?,`telefono` = ? WHERE `contactos`.`id` = ?";
-		try {
-			
-			sentencia = conexion.prepareStatement(sql);
-
-		
-			sentencia.setString(1,datos.getNombre());
-			sentencia.setString(2,datos.getDireccion());
-			sentencia.setString(3, datos.getTelefono());
-			sentencia.setInt(4, datos.getId());
-			sentencia.executeUpdate();
-			
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public void eliminarDatos(int id) {
-		String sql = "DELETE FROM `contactos` WHERE `contactos`.`id` = ?";
-		try {
-			sentencia = conexion.prepareStatement(sql);
-			sentencia.setInt(1, id);
-			sentencia.executeUpdate();
-
-			
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-	}
 
 }
