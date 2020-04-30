@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -15,11 +16,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Properties;
-
-import javax.swing.JOptionPane;
-
 import clienteServidor.DatosContacto;
-import ventanas.InicioUsuario;
+
 
 public class Server implements RMIAgendaInterface {
 	private static String usr;
@@ -92,86 +90,110 @@ public class Server implements RMIAgendaInterface {
 	}
 
 	@Override
-	public boolean consultaUsuario(String usuario, String contraseña) {
-		Connection cn = conectar();
-		boolean usuarioValido = false;
-		String query = "Select * From usuario where nombreUsuario='" + usuario+"'";
-		if (cn != null) {
-			System.out.println("Conectado");
-			try {
-				Statement stm = cn.createStatement();
-				ResultSet rs = null;
-				usuarioS = usuario;
-				rs = stm.executeQuery(query);
-				if (rs.next()) {
-					if (contraseña.equals(rs.getString(2))) {
-						usuarioValido = true;
-					}
+	public boolean consultaUsuario(String usuario, String contraseña) throws RemoteException {
+		usuarioS=usuario;
+		boolean usuarioValido=false;
+		String query="Select * From usuarios where nombreUsuario="+usuario;
+		Statement stmt;
+		try {
+			stmt = conexion.createStatement();
+			ResultSet rset = stmt.executeQuery(query);
+			if(rset.next()) {			
+				if(contraseña.equals(rset.getString(2))) {
+					usuarioValido= true;
 				}
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
+			rset.close();
+			stmt.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		
 		return usuarioValido;
 
 	}
 
+	@Override
+	public HashMap<Integer, DatosContacto> sacarTabla()  throws RemoteException {
+		String query = "SELECT * FROM contactos where nombreUsuario="+usuarioS;
+		HashMap<Integer, DatosContacto> map = new HashMap<Integer, DatosContacto>();
+		try {
+			Statement stmt = conexion.createStatement();
+			ResultSet rset = stmt.executeQuery(query);
+			while (rset.next()) {
+				int id = rset.getInt("id");
+				String nombre = rset.getString("nombre");
+				String direccion = rset.getString("direccion");
+				String telefono = rset.getString("telefono");
+				DatosContacto datos = new DatosContacto(id, nombre, direccion, telefono);
+				map.put(id, datos);
+			}
+			rset.close();
+			stmt.close();
+		} catch (SQLException s) {
+			s.printStackTrace();
+		}
+		return map;
+	}
+	
 
-	public static void añadirDatos(DatosContacto datos) {
-		String sql = "INSERT INTO contactos (nombre, direccion, telefono,nombreUsuario) VALUES (?,?,?,?)";
+	@Override
+	public void añadirDatos(DatosContacto datos)  throws RemoteException{
+		String sql = "INSERT INTO `contactos` (`id`, `nombre`, `direccion`, `telefono`,'nombreUsuario') VALUES (?,?,?,?,?)";
 		try {
 
 			sentencia = conexion.prepareStatement(sql);
 
-			sentencia.setString(1, datos.getNombre());
-			sentencia.setString(2, datos.getDireccion());
-			sentencia.setString(3, datos.getTelefono());
-			sentencia.setString(4, InicioUsuario.correo);
+			sentencia.setInt(1, datos.getId());
+			sentencia.setString(2, datos.getNombre());
+			sentencia.setString(3, datos.getDireccion());
+			sentencia.setString(4, datos.getTelefono());
+			sentencia.setString(5, usuarioS);
 
 			sentencia.executeUpdate();
 
 		} catch (SQLException e) {
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(null, "Error al crear contacto");
+		e.printStackTrace();
 		}
 	}
 
 
-	public static Connection conectar() {
-		Properties propiedades = new Properties();
-		InputStream entrada = null;
-		// acesso a db
+	@Override
+	public void modificarTabla(DatosContacto datos)  throws RemoteException{
+		String sql = "UPDATE `contactos` SET `nombre` = ?, `direccion` = ?,`telefono` = ? WHERE `contactos`.`id` = ?";
 		try {
-			File miFichero = new File("config.ini");
+			
+			sentencia = conexion.prepareStatement(sql);
 
-			if (miFichero.exists()) {
-				entrada = new FileInputStream(miFichero);
-
-				propiedades.load(entrada);
-
-				driver = propiedades.getProperty("driver");
-				usr = propiedades.getProperty("usr");
-				pwd = propiedades.getProperty("pwd");
-				url = propiedades.getProperty("url");
-
-				Class.forName(driver);
-				conexion = DriverManager.getConnection(url, usr, pwd);
-
-			}
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		} finally {
-			if (entrada != null) {
-				try {
-					entrada.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+		
+			sentencia.setString(1,datos.getNombre());
+			sentencia.setString(2,datos.getDireccion());
+			sentencia.setString(3, datos.getTelefono());
+			sentencia.setInt(4, datos.getId());
+			sentencia.executeUpdate();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
 		}
-		return conexion;
 	}
+
+	@Override
+	public void eliminarDatos(int id)  throws RemoteException{
+		String sql = "DELETE FROM `contactos` WHERE `contactos`.`id` = ?";
+		try {
+			sentencia = conexion.prepareStatement(sql);
+			sentencia.setInt(1, id);
+			sentencia.executeUpdate();
+
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
 	
 
 
