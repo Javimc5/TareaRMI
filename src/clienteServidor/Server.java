@@ -30,7 +30,7 @@ public class Server implements RMIAgendaInterface {
 
 		Properties propiedades = new Properties();
 		InputStream entrada = null;
-
+		//acesso a db
 		try {
 			File miFichero = new File("Config/config.ini");
 
@@ -59,6 +59,7 @@ public class Server implements RMIAgendaInterface {
 				}
 			}
 		}
+		//rmi
 		Registry reg = null;
 		try {
 			System.out.println("Crea el registro de objetos, escuchando en el puerto 5555");
